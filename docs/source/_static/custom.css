@@ -1,0 +1,66 @@
+/* Custom styles for LazyML documentation */
+
+/* Make the logo/title more prominent */
+.sidebar-brand-text {
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+/* Improve code block readability */
+.code-block {
+    font-size: 0.9em;
+}
+
+/* Style for API function signatures */
+.sig {
+    font-family: 'SF Mono', Monaco, Inconsolata, 'Fira Code', monospace;
+}
+
+/* Make parameter names stand out */
+.sig-param {
+    font-style: italic;
+}
+
+/* Improve table styling */
+table.docutils {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table.docutils th {
+    background-color: var(--color-background-secondary);
+    font-weight: 600;
+}
+
+table.docutils td,
+table.docutils th {
+    padding: 0.5rem;
+    border: 1px solid var(--color-background-border);
+}
+
+/* Style for version information */
+.versionmodified {
+    font-size: 0.9em;
+    color: var(--color-problematic);
+}
+
+/* Make admonitions more visible */
+.admonition {
+    border-left: 4px solid;
+}
+
+.admonition.note {
+    border-left-color: #448aff;
+}
+
+.admonition.warning {
+    border-left-color: #ff9800;
+}
+
+.admonition.tip {
+    border-left-color: #4caf50;
+}
+
+.admonition.important {
+    border-left-color: #ff5722;
+}
