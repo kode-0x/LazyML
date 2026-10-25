@@ -6,12 +6,10 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_selection import (
     SelectKBest,
+    VarianceThreshold,
     f_classif,
     f_regression,
-    VarianceThreshold,
-    SelectFromModel,
 )
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 
 class FeatureSelector:
@@ -32,10 +30,9 @@ class FeatureSelector:
         self.max_features = max_features
         self.selected_features: list[str] = []
         self.feature_scores: dict[str, float] = {}
+        self._is_fitted = False
 
-    def fit_transform(
-        self, X: pd.DataFrame, y: np.ndarray
-    ) -> tuple[pd.DataFrame, list[str]]:
+    def fit_transform(self, X: pd.DataFrame, y: np.ndarray) -> tuple[pd.DataFrame, list[str]]:
         """Apply feature selection and return transformed data."""
         df = X.copy()
         original_features = list(df.columns)
@@ -52,11 +49,26 @@ class FeatureSelector:
             df = self._model_selection(df, y)
 
         self.selected_features = list(df.columns)
+        self._is_fitted = True
         removed = set(original_features) - set(self.selected_features)
         if removed:
             print(f"  Feature selection: removed {len(removed)} features ({', '.join(removed)})")
 
         return df, self.selected_features
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Apply the selection learned in ``fit_transform`` to new data.
+
+        No statistics are recomputed; the exact columns kept during fit are
+        selected and returned in the same order, so test/inference data is
+        processed identically to training data.
+        """
+        if not self._is_fitted:
+            raise ValueError("FeatureSelector must be fit before transform")
+        missing = [c for c in self.selected_features if c not in X.columns]
+        if missing:
+            raise ValueError(f"Input is missing selected feature columns: {missing}")
+        return X[self.selected_features]
 
     def _remove_low_variance(self, df: pd.DataFrame) -> pd.DataFrame:
         """Remove features with variance below threshold."""
@@ -85,9 +97,7 @@ class FeatureSelector:
             return df
 
         corr_matrix = df[numeric_cols].corr().abs()
-        upper = corr_matrix.where(
-            np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
-        )
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
 
         to_drop = set()
         for col in upper.columns:
@@ -121,7 +131,7 @@ class FeatureSelector:
 
         # Store scores
         scores = selector.scores_[mask]
-        self.feature_scores = dict(zip(selected_cols, scores))
+        self.feature_scores = dict(zip(selected_cols, scores, strict=False))
 
         non_numeric = df.drop(columns=numeric_df.columns, errors="ignore")
         return pd.concat([df[selected_cols], non_numeric], axis=1)
