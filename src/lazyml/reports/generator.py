@@ -1,9 +1,9 @@
 """HTML report generation."""
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
-from datetime import datetime
 
 import pandas as pd
 
@@ -52,10 +52,10 @@ class ReportGenerator:
 
             leaderboard_rows += f"""
                 <tr>
-                    <td>{entry['model']}</td>
+                    <td>{entry["model"]}</td>
                     <td>{metrics}</td>
-                    <td>{entry.get('cv_std', 0):.4f}</td>
-                    <td>{entry['train_time']:.2f}s</td>
+                    <td>{entry.get("cv_std", 0):.4f}</td>
+                    <td>{entry["train_time"]:.2f}s</td>
                 </tr>
             """
 

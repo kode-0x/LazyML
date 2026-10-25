@@ -4,7 +4,11 @@ from typing import Any
 
 import numpy as np
 from sklearn.metrics import (
-    accuracy_score, f1_score, mean_squared_error, mean_absolute_error, r2_score
+    accuracy_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
 )
 
 
@@ -66,7 +70,9 @@ class ModelSelector:
             if self.task_type == "classification":
                 print(f"{i}. {entry['model']:<15} - Accuracy: {entry.get('accuracy', 0):.4f}")
             else:
-                print(f"{i}. {entry['model']:<15} - R²: {entry.get('r2', 0):.4f}, RMSE: {entry.get('rmse', 0):.4f}")
+                print(
+                    f"{i}. {entry['model']:<15} - R²: {entry.get('r2', 0):.4f}, RMSE: {entry.get('rmse', 0):.4f}"
+                )
         print("=" * 50)
 
         return best_model, leaderboard

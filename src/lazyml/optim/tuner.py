@@ -1,9 +1,11 @@
 """Optuna-based hyperparameter tuning (optional)."""
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 try:
     import optuna
+
     OPTUNA_AVAILABLE = True
 except ImportError:
     OPTUNA_AVAILABLE = False
@@ -57,7 +59,9 @@ class OptunaTuner:
         # Create and run study
         direction = "maximize" if scoring in ["accuracy", "r2", "f1"] else "minimize"
         self.study = optuna.create_study(direction=direction)
-        self.study.optimize(objective, n_trials=self.n_trials, timeout=self.timeout, show_progress_bar=True)
+        self.study.optimize(
+            objective, n_trials=self.n_trials, timeout=self.timeout, show_progress_bar=True
+        )
 
         # Train final model with best params
         best_params = self.study.best_params
@@ -73,5 +77,6 @@ class OptunaTuner:
 
         return [
             {"trial": t.number, "value": t.value, "params": t.params}
-            for t in self.study.trials if t.value is not None
+            for t in self.study.trials
+            if t.value is not None
         ]
