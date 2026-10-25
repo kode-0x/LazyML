@@ -1,10 +1,10 @@
 """Dataset profiling and analysis."""
 
 from dataclasses import dataclass
-from typing import Any
 
 import pandas as pd
-from pandas.api.types import is_numeric_dtype, is_categorical_dtype, is_object_dtype
+from pandas import CategoricalDtype
+from pandas.api.types import is_numeric_dtype, is_string_dtype
 
 
 @dataclass
@@ -81,10 +81,14 @@ class DataProfiler:
         unique_count = series.nunique(dropna=True)
 
         is_numeric = is_numeric_dtype(series)
-        is_categorical = is_categorical_dtype(series) or (
-            is_object_dtype(series) and unique_count <= min(50, len(series) * 0.05)
-        )
-        is_text = is_object_dtype(series) and not is_categorical
+        # pandas 2.x stores text as ``object``; pandas 3.x may use a dedicated
+        # string dtype. Treat both (and anything non-numeric, non-categorical)
+        # as string-like for type inference.
+        is_declared_categorical = isinstance(series.dtype, CategoricalDtype)
+        is_string_like = is_string_dtype(series) and not is_numeric
+        is_low_cardinality = unique_count <= min(50, max(1, len(series) * 0.05))
+        is_categorical = is_declared_categorical or (is_string_like and is_low_cardinality)
+        is_text = is_string_like and not is_categorical
 
         return ColumnProfile(
             name=name,
