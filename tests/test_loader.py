@@ -1,8 +1,9 @@
 """Tests for data loader."""
 
-import pytest
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+import pytest
 
 from lazyml.core.loader import DataLoader
 
@@ -11,11 +12,13 @@ def test_load_csv(tmp_path: Path) -> None:
     """Test loading a valid CSV file."""
     # Create test CSV
     csv_path = tmp_path / "test.csv"
-    df = pd.DataFrame({
-        "feature1": [1, 2, 3],
-        "feature2": ["a", "b", "c"],
-        "target": [0, 1, 0],
-    })
+    df = pd.DataFrame(
+        {
+            "feature1": [1, 2, 3],
+            "feature2": ["a", "b", "c"],
+            "target": [0, 1, 0],
+        }
+    )
     df.to_csv(csv_path, index=False)
 
     loader = DataLoader(csv_path)
@@ -41,9 +44,11 @@ def test_load_non_csv() -> None:
 
 def test_infer_target_column() -> None:
     """Test target column inference."""
-    df = pd.DataFrame({
-        "a": [1, 2],
-        "target": [0, 1],
-    })
+    df = pd.DataFrame(
+        {
+            "a": [1, 2],
+            "target": [0, 1],
+        }
+    )
     target = DataLoader.infer_target_column(df)
     assert target == "target"
