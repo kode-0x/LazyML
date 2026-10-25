@@ -8,20 +8,25 @@ from typing import Any
 try:
     import optuna
     from optuna.samplers import TPESampler
+
     OPTUNA_AVAILABLE = True
 except ImportError:
     OPTUNA_AVAILABLE = False
 
 import numpy as np
 from sklearn.ensemble import (
-    RandomForestClassifier, RandomForestRegressor,
-    AdaBoostClassifier, AdaBoostRegressor,
-    ExtraTreesClassifier, ExtraTreesRegressor,
-    GradientBoostingClassifier, GradientBoostingRegressor,
+    AdaBoostClassifier,
+    AdaBoostRegressor,
+    ExtraTreesClassifier,
+    ExtraTreesRegressor,
+    GradientBoostingClassifier,
+    GradientBoostingRegressor,
+    RandomForestClassifier,
+    RandomForestRegressor,
 )
-from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso
-from sklearn.model_selection import cross_val_score, StratifiedKFold, KFold
-from sklearn.naive_bayes import GaussianNB, MultinomialNB, ComplementNB
+from sklearn.linear_model import Lasso, LinearRegression, LogisticRegression, Ridge
+from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -172,11 +177,15 @@ class ModelTrainer:
         start_time = time.time()
 
         cv = self._get_cv_splitter()
-        scoring = "accuracy" if self.task_type == "classification" else "neg_root_mean_squared_error"
+        scoring = (
+            "accuracy" if self.task_type == "classification" else "neg_root_mean_squared_error"
+        )
 
         # Use Optuna for hyperparameter tuning if enabled
         if self.use_optuna and OPTUNA_AVAILABLE:
-            print(f"Training with Optuna hyperparameter tuning ({self.optuna_trials} trials per model)...")
+            print(
+                f"Training with Optuna hyperparameter tuning ({self.optuna_trials} trials per model)..."
+            )
             results = self._train_with_optuna(X, y, cv, scoring, start_time)
         elif self.parallel and len(self.models) > 1:
             print(f"Training {len(self.models)} models in parallel...")
@@ -201,39 +210,40 @@ class ModelTrainer:
     ) -> None:
         """Build and train ensemble from best models."""
         from lazyml.models.ensemble import create_ensemble_from_results
-        
+
         # Determine ensemble type based on task
         ensemble_type = "voting" if self.task_type == "classification" else "stacking"
-        
+
         print(f"\nBuilding {ensemble_type} ensemble from top models...")
-        
+
         ensemble_result = create_ensemble_from_results(
             results, self.task_type, ensemble_type=ensemble_type, top_n=3
         )
-        
+
         if ensemble_result is None:
             print("  Could not build ensemble: insufficient fitted models")
             return
-        
+
         ensemble, model_names = ensemble_result
-        
+
         # Check if we have time to train ensemble
         if self.time_budget and (time.time() - start_time) > self.time_budget * 0.9:
             print("  Skipping ensemble: time budget nearly exhausted")
             return
-        
+
         try:
             # Train the ensemble
             ensemble.fit(X, y)
-            
+
             # Evaluate ensemble
             from sklearn.model_selection import cross_val_score
+
             scores = cross_val_score(ensemble, X, y, cv=cv, scoring=scoring, n_jobs=-1)
             mean_score = scores.mean()
-            
+
             if scoring == "neg_root_mean_squared_error":
                 mean_score = -mean_score
-            
+
             # Store ensemble in results
             ensemble_name = f"Ensemble ({ensemble_type})"
             results[ensemble_name] = {
@@ -245,9 +255,9 @@ class ModelTrainer:
                 "is_ensemble": True,
                 "component_models": model_names,
             }
-            
+
             print(f"  Ensemble score: {mean_score:.4f} (from {', '.join(model_names)})")
-            
+
         except Exception as e:
             print(f"  Ensemble training failed: {e}")
 
@@ -261,9 +271,9 @@ class ModelTrainer:
         n_models = len(self.models)
         time_per_model = (self.time_budget / n_models) if self.time_budget else None
 
-        for name in self.models.keys():
+        for name in self.models:
             if time.time() - start_time > self.time_budget:
-                print(f"Time budget reached. Stopping training.")
+                print("Time budget reached. Stopping training.")
                 break
 
             print(f"Tuning {name} with Optuna...")
@@ -271,12 +281,17 @@ class ModelTrainer:
 
             try:
                 # Calculate remaining time for this model
-                remaining = self.time_budget - (time.time() - start_time) if self.time_budget else None
+                remaining = (
+                    self.time_budget - (time.time() - start_time) if self.time_budget else None
+                )
                 if remaining and remaining < 30:  # Skip if less than 30s remaining
                     print(f"  Skipping {name}: insufficient time remaining")
                     continue
 
-                model_timeout = min(time_per_model, remaining) if remaining else time_per_model
+                if remaining is not None and time_per_model is not None:
+                    model_timeout: float | None = min(time_per_model, remaining)
+                else:
+                    model_timeout = time_per_model
 
                 best_model, best_params, best_score = self._tune_model_with_optuna(
                     name, X, y, cv, scoring, timeout=model_timeout
@@ -294,7 +309,12 @@ class ModelTrainer:
                     "best_params": best_params,
                 }
 
-                params_str = ", ".join([f"{k}={v:.3f}" if isinstance(v, float) else f"{k}={v}" for k, v in list(best_params.items())[:3]])
+                params_str = ", ".join(
+                    [
+                        f"{k}={v:.3f}" if isinstance(v, float) else f"{k}={v}"
+                        for k, v in list(best_params.items())[:3]
+                    ]
+                )
                 print(f"  Score: {best_score:.4f} in {train_time:.2f}s (params: {params_str}...)")
 
             except Exception as e:
@@ -318,7 +338,7 @@ class ModelTrainer:
 
         for name, model in self.models.items():
             if time.time() - start_time > self.time_budget:
-                print(f"Time budget reached. Stopping training.")
+                print("Time budget reached. Stopping training.")
                 break
 
             print(f"Training {name}...")
@@ -374,7 +394,7 @@ class ModelTrainer:
             # Collect results as they complete
             for future in as_completed(futures):
                 if time.time() - start_time > self.time_budget:
-                    print(f"Time budget reached. Stopping training.")
+                    print("Time budget reached. Stopping training.")
                     break
 
                 name = futures[future]
@@ -383,7 +403,9 @@ class ModelTrainer:
                     results[model_name] = result
 
                     if result["fitted"]:
-                        print(f"  {model_name}: {result['cv_score']:.4f} in {result['train_time']:.2f}s")
+                        print(
+                            f"  {model_name}: {result['cv_score']:.4f} in {result['train_time']:.2f}s"
+                        )
                     else:
                         print(f"  {model_name}: Failed - {result.get('error', 'Unknown error')}")
                 except Exception as e:
@@ -399,7 +421,7 @@ class ModelTrainer:
 
         return results
 
-    def _get_cv_splitter(self):
+    def _get_cv_splitter(self) -> StratifiedKFold | KFold:
         """Get cross-validation splitter based on task type."""
         if self.task_type == "classification":
             return StratifiedKFold(n_splits=self.cv_folds, shuffle=True, random_state=42)
@@ -412,20 +434,24 @@ class ModelTrainer:
         y: np.ndarray,
         cv: Any,
         scoring: str,
-        timeout: int | None = None,
+        timeout: float | None = None,
     ) -> tuple[Any, dict[str, Any], float]:
         """Tune a single model using Optuna."""
-        from lazyml.optim.search_spaces import get_search_space, create_model_with_params
+        from lazyml.optim.search_spaces import create_model_with_params, get_search_space
 
         search_space = get_search_space(model_name, self.task_type)
         if not search_space:
-            # No search space defined, use default model
+            # No search space defined: evaluate the default model and report
+            # its actual CV score so it ranks fairly against tuned models.
             model = self.models.get(model_name)
             if model is None:
                 raise ValueError(f"Model {model_name} not found")
             scores = cross_val_score(model, X, y, cv=cv, scoring=scoring, n_jobs=-1)
+            score = scores.mean()
+            if scoring == "neg_root_mean_squared_error":
+                score = -score
             model.fit(X, y)
-            return model, {}, 0.0
+            return model, {}, float(score)
 
         direction = "maximize" if scoring in ["accuracy", "r2", "f1"] else "minimize"
 
@@ -470,13 +496,12 @@ class ModelTrainer:
                     raise optuna.TrialPruned()
 
                 return score
-            except Exception as e:
-                raise optuna.TrialPruned()
-
-        # Run optimization
-        remaining_time = None
-        if timeout:
-            remaining_time = timeout - (time.time() - time.time())  # Placeholder, set properly in train loop
+            except optuna.TrialPruned:
+                raise
+            except Exception as err:
+                # A parameter combination that fails to fit is treated as a
+                # pruned trial rather than aborting the whole study.
+                raise optuna.TrialPruned() from err
 
         study.optimize(
             objective,
