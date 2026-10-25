@@ -1,7 +1,6 @@
 """Data loading utilities."""
 
 from pathlib import Path
-from typing import Union
 
 import pandas as pd
 
@@ -9,16 +8,16 @@ import pandas as pd
 class DataLoader:
     """Load CSV datasets with validation."""
 
-    def __init__(self, file_path: Union[str, Path]) -> None:
+    def __init__(self, file_path: str | Path) -> None:
         self.file_path = Path(file_path)
 
     def load(self) -> pd.DataFrame:
         """Load and validate CSV file."""
-        if not self.file_path.exists():
-            raise FileNotFoundError(f"File not found: {self.file_path}")
-
         if self.file_path.suffix.lower() != ".csv":
             raise ValueError(f"Expected CSV file, got: {self.file_path.suffix}")
+
+        if not self.file_path.exists():
+            raise FileNotFoundError(f"File not found: {self.file_path}")
 
         try:
             df = pd.read_csv(self.file_path)
