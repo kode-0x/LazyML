@@ -5,7 +5,7 @@ from typing import Any
 
 def get_search_space(model_name: str, task_type: str) -> dict[str, Any]:
     """Get hyperparameter search space for a model."""
-    spaces = {
+    spaces: dict[str, dict[str, Any]] = {
         "RandomForest": {
             "n_estimators": {"type": "int", "low": 50, "high": 500, "log": True},
             "max_depth": {"type": "int", "low": 3, "high": 30},
@@ -94,12 +94,16 @@ def get_search_space(model_name: str, task_type: str) -> dict[str, Any]:
 def create_model_with_params(model_name: str, task_type: str, params: dict[str, Any]) -> Any:
     """Create a model instance with given parameters."""
     from sklearn.ensemble import (
-        RandomForestClassifier, RandomForestRegressor,
-        AdaBoostClassifier, AdaBoostRegressor,
-        ExtraTreesClassifier, ExtraTreesRegressor,
-        GradientBoostingClassifier, GradientBoostingRegressor,
+        AdaBoostClassifier,
+        AdaBoostRegressor,
+        ExtraTreesClassifier,
+        ExtraTreesRegressor,
+        GradientBoostingClassifier,
+        GradientBoostingRegressor,
+        RandomForestClassifier,
+        RandomForestRegressor,
     )
-    from sklearn.linear_model import LogisticRegression, Ridge, Lasso
+    from sklearn.linear_model import Lasso, LogisticRegression, Ridge
     from sklearn.naive_bayes import GaussianNB
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.svm import SVC
@@ -117,11 +121,19 @@ def create_model_with_params(model_name: str, task_type: str, params: dict[str, 
             params.pop("l1_ratio", None)
 
     model_map = {
-        "RandomForest": RandomForestClassifier if task_type == "classification" else RandomForestRegressor,
-        "ExtraTrees": ExtraTreesClassifier if task_type == "classification" else ExtraTreesRegressor,
-        "GradientBoosting": GradientBoostingClassifier if task_type == "classification" else GradientBoostingRegressor,
+        "RandomForest": RandomForestClassifier
+        if task_type == "classification"
+        else RandomForestRegressor,
+        "ExtraTrees": ExtraTreesClassifier
+        if task_type == "classification"
+        else ExtraTreesRegressor,
+        "GradientBoosting": GradientBoostingClassifier
+        if task_type == "classification"
+        else GradientBoostingRegressor,
         "AdaBoost": AdaBoostClassifier if task_type == "classification" else AdaBoostRegressor,
-        "DecisionTree": DecisionTreeClassifier if task_type == "classification" else DecisionTreeRegressor,
+        "DecisionTree": DecisionTreeClassifier
+        if task_type == "classification"
+        else DecisionTreeRegressor,
         "LogisticRegression": LogisticRegression,
         "Ridge": Ridge,
         "Lasso": Lasso,
@@ -133,19 +145,24 @@ def create_model_with_params(model_name: str, task_type: str, params: dict[str, 
     # Optional models
     try:
         from xgboost import XGBClassifier, XGBRegressor
+
         model_map["XGBoost"] = XGBClassifier if task_type == "classification" else XGBRegressor
     except ImportError:
         pass
 
     try:
         from lightgbm import LGBMClassifier, LGBMRegressor
+
         model_map["LightGBM"] = LGBMClassifier if task_type == "classification" else LGBMRegressor
     except ImportError:
         pass
 
     try:
         from catboost import CatBoostClassifier, CatBoostRegressor
-        model_map["CatBoost"] = CatBoostClassifier if task_type == "classification" else CatBoostRegressor
+
+        model_map["CatBoost"] = (
+            CatBoostClassifier if task_type == "classification" else CatBoostRegressor
+        )
     except ImportError:
         pass
 
