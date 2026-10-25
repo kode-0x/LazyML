@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "LazyML command-line tool for automated machine learning on CSV datasets"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
     {name = "Author", email = "author@example.com"}
 ]
@@ -17,8 +17,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -30,6 +28,7 @@ dependencies = [
     "pyyaml>=6.0",
     "rich>=13.0.0",
     "joblib>=1.3.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +36,15 @@ boost = ["xgboost>=2.0.0", "lightgbm>=4.0.0", "catboost>=1.2.0"]
 optuna = ["optuna>=3.0.0"]
 tui = ["textual>=0.41.0"]
 imbalanced = ["imbalanced-learn>=0.11.0"]
-dev = ["pytest>=7.0", "mypy>=1.0", "ruff>=0.1.0"]
+polars = ["polars>=0.20.0"]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "hypothesis>=6.0",
+    "mypy>=1.0",
+    "ruff>=0.1.0",
+    "types-PyYAML>=6.0",
+]
 docs = [
     "sphinx>=7.0",
     "furo>=2023.9.10",
@@ -54,11 +61,32 @@ packages = ["src/lazyml"]
 
 [tool.ruff]
 line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+# N803/N806: allow ML-idiomatic uppercase X/y feature-matrix names.
+# B008: Typer requires function-call defaults (typer.Option/Argument).
+ignore = ["E501", "N803", "N806", "B008"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 strict = true
-warn_return_any = true
+# scikit-learn and pandas are largely untyped and return ``Any`` from most
+# methods; warning on those propagated returns produces noise, not real bugs.
+warn_return_any = false
 warn_unused_ignores = true
+ignore_missing_imports = true
+files = ["src/lazyml"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["src/lazyml"]
+branch = true
